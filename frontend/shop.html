@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopLite</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+      margin: 0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+    .header img {
+      width: 40px;
+      height: 40px;
+    }
+    .header h1 {
+      font-size: 2rem;
+      color: #4F46E5;
+    }
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    .product {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s;
+    }
+    .product:hover {
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .product img {
+      width: 100%;
+      height: 150px;
+      object-fit: contain;
+      margin-bottom: 10px;
+    }
+    .product h3 {
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .product .price {
+      color: #4F46E5;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .product button {
+      width: 100%;
+      background: #4F46E5;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .product button:hover {
+      background: #3730A3;
+    }
+    .cart {
+      margin-top: 30px;
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .cart h2 {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .error {
+      color: #dc2626;
+      background: #fef2f2;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    .success {
+      color: #059669;
+      background: #f0fdf4;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="https://placehold.co/40x40/4F46E5/FFFFFF?text=🛒" alt="Logo">
+    <h1>ShopLite</h1>
+  </div>
+
+  <div style="margin-bottom: 20px;">
+    <input 
+      type="text" 
+      id="search" 
+      placeholder="Поиск товаров..." 
+      style="padding: 8px; width: 300px; border: 1px solid #ddd; border-radius: 5px;"
+      oninput="filterProducts()"
+    >
+  </div>
+
+  <div class="products" id="products"></div>
+
+  <div class="cart" id="cart">
+    <h2>🛒 Корзина: <span id="cart-count">0</span> товар(ов)</h2>
+    <div id="cart-items"></div>
+  </div>
+
+  <script>
+    // Товары (будут загружаться с Java-сервиса)
+    let products = [];
+    let cart = [];
+
+    // Загрузка товаров с Java-микросервиса
+    async function loadProducts() {
+        try {
+            console.log('🔄 Загружаю товары с Java-сервиса...');
+            const response = await fetch('http://localhost:8080/api/products');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            products = await response.json();
+            console.log('✅ Товары загружены:', products);
+            renderProducts(products);
+            
+        } catch (error) {
+            console.error('❌ Ошибка загрузки товаров с Java-сервиса:', error);
+            
+            // Запасной вариант - статические товары
+            console.log('🔄 Использую статические товары...');
+            products = [
+                { id: 1, name: "Футболка", price: 990, image: "https://placehold.co/200x200/4F46E5/FFFFFF?text=👕" },
+                { id: 2, name: "Куртка", price: 5490, image: "https://placehold.co/200x200/059669/FFFFFF?text=🧥" },
+                { id: 3, name: "Кроссовки", price: 3290, image: "https://placehold.co/200x200/DC2626/FFFFFF?text=👟" },
+                { id: 4, name: "Джинсы", price: 2990, image: "https://placehold.co/200x200/7C3AED/FFFFFF?text=👖" },
+                { id: 5, name: "Шапка", price: 1290, image: "https://placehold.co/200x200/EA580C/FFFFFF?text=🧢" }
+            ];
+            renderProducts(products);
+        }
+    }
+
+    // Поиск товаров
+    function filterProducts() {
+        const term = document.getElementById('search').value.toLowerCase();
+        const filteredProducts = products.filter(p => p.name.toLowerCase().includes(term));
+        renderProducts(filteredProducts);
+    }
+
+    // Отображение товаров
+    function renderProducts(productsList) {
+        const container = document.getElementById('products');
+        container.innerHTML = '';
+        
+        if (productsList.length === 0) {
+            container.innerHTML = '<div class="error">Товары не найдены</div>';
+            return;
+        }
+
+        productsList.forEach(product => {
+            const div = document.createElement('div');
+            div.className = 'product';
+            div.innerHTML = `
+                <img src="${product.image}" alt="${product.name}">
+                <h3>${product.name}</h3>
+                <div class="price">${product.price} ₽</div>
+                <button onclick="addToCart(${product.id})">В корзину</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Добавить в корзину
+    async function addToCart(productId) {
+        const product = products.find(p => p.id === productId);
+        if (!product) return;
+
+        try {
+            const response = await fetch('http://127.0.0.1:8001/api/cart/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(product)
+            });
+
+            if (response.ok) {
+                console.log('✅ Товар добавлен в корзину');
+                showMessage('✅ Товар добавлен в корзину', 'success');
+                await renderCart();
+            } else {
+                const errorText = await response.text();
+                console.error('❌ Ошибка сервера:', errorText);
+                showMessage('❌ Ошибка при добавлении товара', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Ошибка сети:', error);
+            showMessage('❌ Микросервис корзины недоступен. Запустите бэкенд на порту 8001', 'error');
+            addToLocalCart(product);
+        }
+    }
+
+    // Показать сообщение
+    function showMessage(text, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = type === 'success' ? 'success' : 'error';
+        messageDiv.textContent = text;
+        
+        document.body.prepend(messageDiv);
+        
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 3000);
+    }
+
+    // Локальная корзина (запасной вариант)
+    function addToLocalCart(product) {
+        const existingItem = cart.find(item => item.id === product.id);
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({ ...product, quantity: 1 });
+        }
+        updateCartDisplay();
+        showMessage('✅ Товар добавлен в локальную корзину', 'success');
+    }
+
+    // Удалить из корзины
+    async function removeFromCart(productId) {
+        try {
+            const response = await fetch(`http://127.0.0.1:8001/api/cart/remove/${productId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                console.log('✅ Товар удалён из корзины');
+                await renderCart();
+            } else {
+                console.error('❌ Ошибка удаления:', await response.text());
+            }
+        } catch (error) {
+            console.error('❌ Ошибка сети при удалении');
+            cart = cart.filter(item => item.id !== productId);
+            updateCartDisplay();
+        }
+    }
+
+    // Обновить корзину с сервера
+    async function renderCart() {
+        try {
+            const response = await fetch('http://127.0.0.1:8001/api/cart');
+            if (response.ok) {
+                cart = await response.json();
+                updateCartDisplay();
+            } else {
+                throw new Error('Сервер не отвечает');
+            }
+        } catch (error) {
+            console.error('❌ Микросервис корзины недоступен:', error.message);
+            updateCartDisplay();
+        }
+    }
+
+    // Обновить отображение корзины
+    function updateCartDisplay() {
+        const countElement = document.getElementById('cart-count');
+        const itemsElement = document.getElementById('cart-items');
+        
+        const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+        countElement.textContent = totalCount;
+        
+        itemsElement.innerHTML = '';
+        
+        if (cart.length === 0) {
+            itemsElement.innerHTML = '<div>Корзина пуста</div>';
+            return;
+        }
+
+        cart.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'cart-item';
+            div.innerHTML = `
+                <span>${item.name} × ${item.quantity}</span>
+                <div>
+                    <span>${item.price * item.quantity} ₽</span>
+                    <button onclick="removeFromCart(${item.id})" style="margin-left:10px;background:#dc2626;color:white;border:none;padding:2px 8px;border-radius:4px;cursor:pointer;">Удалить</button>
+                </div>
+            `;
+            itemsElement.appendChild(div);
+        });
+    }
+
+    // Загрузка при старте
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProducts();
+        renderCart();
+    });
+</script>
+</body>
+</html>
