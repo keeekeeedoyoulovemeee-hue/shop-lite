@@ -100,6 +100,22 @@
       border-radius: 5px;
       margin: 10px 0;
     }
+    .description {
+      color: #666;
+      font-size: 0.9rem;
+      margin: 5px 0;
+      height: 40px;
+      overflow: hidden;
+    }
+    .category {
+      display: inline-block;
+      background: #e0e7ff;
+      color: #4f46e5;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -181,8 +197,10 @@
             const div = document.createElement('div');
             div.className = 'product';
             div.innerHTML = `
-                <img src="${product.image}" alt="${product.name}">
+                <img src="${product.imageUrl || product.image}" alt="${product.name}">
                 <h3>${product.name}</h3>
+                ${product.description ? `<p class="description">${product.description}</p>` : ''}
+                ${product.category ? `<div class="category">${product.category}</div>` : ''}
                 <div class="price">${product.price} ₽</div>
                 <button onclick="addToCart(${product.id})">В корзину</button>
             `;
@@ -196,10 +214,18 @@
         if (!product) return;
 
         try {
+            // Создаём упрощённый объект товара для корзины
+            const cartProduct = {
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                image: product.imageUrl || product.image  // поддержка обоих форматов
+            };
+
             const response = await fetch('http://127.0.0.1:8001/api/cart/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(product)
+                body: JSON.stringify(cartProduct)
             });
 
             if (response.ok) {
@@ -213,7 +239,7 @@
             }
         } catch (error) {
             console.error('❌ Ошибка сети:', error);
-            showMessage('❌ Микросервис корзины недоступен. Запустите бэкенд на порту 8001', 'error');
+            showMessage('❌ Микросервис корзины недоступен', 'error');
             addToLocalCart(product);
         }
     }
@@ -313,6 +339,6 @@
         loadProducts();
         renderCart();
     });
-</script>
+  </script>
 </body>
 </html>
